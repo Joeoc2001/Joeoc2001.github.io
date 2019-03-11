@@ -1,0 +1,47 @@
+/* Positioning styles */
+.footer { /* Places objects at the base of the page */
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: auto;
+}
+
+.bottom-right {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+}
+
+.footer-image {
+  bottom: 0;
+  vertical-align: bottom;
+  width:40px;
+  height:auto;
+}
+
+/* Formatting Styles */
+
+.title {
+	font-size: 5vw;
+	font-family: 'Noto Sans', sans-serif;
+	color: #212529;
+}
+
+@media (max-width: 500px) {
+	.title {
+		/* Min font sixe */
+		font-size: 25px;
+	}
+}
+
+@media (min-width: 1000px) {
+	.title {
+		/* Min font sixe */
+		font-size: 50px;
+	}
+}
+
+#name-title-column {
+	background-color: #FFFFFF;
+}
