@@ -112,9 +112,11 @@ function hilbertLoopFunction(ticks) {
 		return;
 	}
 	
-	currentForewardTicks -= (ticks * 10);
+	currentForewardTicks -= (ticks * 100);
 	
 	do {
+		hilbertCanvas.strokeStyle = "hsl(" + hue + ", 50%, 66%)";
+		
 		// Draw line to position
 		let currentMoveVector = nextPos.subtract(prevPos);
 		let lineCompletePercent = 1 - (currentForewardTicks / ticksPerForeward);
@@ -167,13 +169,31 @@ function hilbertLoopFunction(ticks) {
 						break;
 				}
 			}
-			
 			// Set colour
 			hue += 90 / (Math.pow(4, order - 1)); // Path segment number scales by about 4 each time
 			hue %= 360;
-			hilbertCanvas.strokeStyle = "hsl(" + hue + ", 50%, 66%)";
+			
+			// Draw curve
+			hilbertCanvas.lineWidth /= 2;
+			hilbertCanvas.beginPath();
+			hilbertCanvas.arc(prevPos.x, prevPos.y, hilbertCanvas.lineWidth / 2, 0, 2*Math.PI);
+			hilbertCanvas.stroke();
+			hilbertCanvas.lineWidth *= 2;
 		}
 	} while (currentForewardTicks <= 0 && currentInstruction < curve.length);
+}
+
+function directionToAngle(d) {
+	switch(d) {
+		case 0:
+			return 1.5*Math.PI;
+		case 1:
+			return 0;
+		case 2:
+			return 0.5*Math.PI;
+		case 3:
+			return Math.PI;
+	}
 }
 
 function hilbertInitFunction(canvas, width, height) {
@@ -189,9 +209,9 @@ function hilbertInitFunction(canvas, width, height) {
 	
 	hilbertCanvas.lineWidth = (forewardXDistance + forewardYDistance) / (2 * 2);
 	
-	prevPos = new Point(hilbertCanvas.lineWidth / 2, height - (hilbertCanvas.lineWidth / 2));
+	prevPos = new Point(hilbertCanvas.lineWidth / 2, height);
 	lastDrawnPos = prevPos;
-	nextPos = prevPos;
+	nextPos = new Point(hilbertCanvas.lineWidth / 2, height - (hilbertCanvas.lineWidth / 2));
 	
 	// Readjust steps to fit line
 	forewardXDistance = (width - hilbertCanvas.lineWidth) / size;
