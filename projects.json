@@ -1,0 +1,15 @@
+{
+	"projects": [
+		{
+			"name": "Hilbert Curve Line Drawing",
+			"js_urls": ["projects/hilbertline.js"],
+			"date_month": 2,
+			"date_year": 2019,
+			"controls": [
+				{"type": "slider", "name": "depth_slider", "text": "Depth", "min": 1, "max": 20, "default": 8},
+				{"type": "slider", "name": "speed_slider", "text": "Speed", "min": 1, "max": 10, "default": 3},
+				{"type": "button", "name": "reset_button", "text": "Reset"}
+			]
+		}
+	]
+}

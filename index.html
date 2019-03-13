@@ -16,7 +16,150 @@
 		<link href="https://fonts.googleapis.com/css?family=Noto+Sans|Roboto" rel="stylesheet">
 		
 		<link rel="stylesheet" href="style.css">
+		<script>
+		const monthNames = ["January", "February", "March", "April", "May", "June",
+				"July", "August", "September", "October", "November", "December"
+			];
+		</script>
+		<!-- Project loading scripts -->
+		<script>
+			class ProjectControl {
+				constructor(type, name, text, default_value, data={}) {
+					this.type = type;
+					this.name = name;
+					this.text = text;
+					this.default_value = default_value;
+					this.data = data;
+				}
+				
+				static fromJson(jsonData) {
+				
+				}
+			}
+			
+			class Project {
+				constructor(name, js_urls, date_month, date_year, controls) {
+					this.name = name;
+					this.js_urls = js_urls;
+					this.date_month = date_month;
+					this.date_year = date_year;
+					this.controls = controls;
+				}
+				
+				static fromJson(jsonData) {
+					return new Project(jsonData["name"], jsonData["js_urls"], jsonData["date_month"], jsonData["date_year"], []);
+				}
+			}
 		
+			let projectsData;
+			let currentProject;
+			
+			let tickFunction = null;
+			let initFunction;
+			
+			let currentProjectLoop = null;
+			
+			let canvasElement;
+			let canvas = null;
+			
+			function initCanvas() {
+				// Get canvas to draw to
+				canvasElement = document.getElementById("backgroundCanvas");
+				canvas = canvasElement.getContext("2d");
+			}
+			
+			function initProject() {
+				// Init canvas if it needs initing
+				if (canvas === null) {
+					initCanvas();
+				}
+				
+				stopProject();
+				
+				// Init the new project
+				initFunction(canvas, canvasElement.width, canvasElement.height);
+			}
+			
+			function tickProject(ticks) {
+				if(tickFunction != null) {
+					tickFunction(ticks);
+				}
+			}
+			
+			function stopProject() {
+				// Stop the last project's loop
+				if (currentProjectLoop != null) {
+					clearInterval(currentProjectLoop)
+					currentProjectLoop = null;
+				}
+			}
+			
+			function playProject() {
+				stopProject();
+				
+				// Animate info bar in
+				slideInProjectInfo();
+				
+				// Add loop
+				window.setInterval(tickProject, 50, 50);
+			}
+			
+			function getProjectsData() {
+				$.ajax({
+					dataType: "json",
+					url: "projects.json",
+					success: getProjectsDataSuccess,
+					error: getProjectsDataError
+				});
+			}
+			
+			function getProjectsDataError( jqXHR, textStatus, errorThrown ) {
+				alert("Could not load projects: " + textStatus + "\n" + errorThrown);
+			}
+			
+			function getProjectsDataSuccess(data) {
+				projectsData = data;
+				
+				if (projectsData == null) {
+					alert("Could not parse json data");
+				}
+				
+				loadProject(0);
+			}
+			
+			function loadProject(index) {
+				stopProject();
+			
+				let projectData = projectsData["projects"][0];
+				currentProject = Project.fromJson(projectData);
+				
+				displayProjectInfo();
+				
+				// Load js for project
+				scriptsDiv = $("#project-scripts");
+				scriptsDiv.empty(); // Clear out all old code
+				for (let x = 0; x < currentProject.js_urls.length; x++) {
+					let newScript = document.createElement('script');
+					newScript.src = currentProject.js_urls[x];
+					scriptsDiv.append(newScript);
+				}
+				
+				initProject();
+			}
+			
+			function displayProjectInfo() {
+				let name = "";
+				let date = "";
+				if (currentProject != null) {
+					name = currentProject.name;
+					date = monthNames[currentProject.date_month] + " " + currentProject.date_year;
+				}
+				$("#project-name").text(name);
+				$("#project-date").text(date);
+			}
+		</script>
+		
+		<!-- Display animation scripts -->
 		<script>
 			// Constants for inflation when the user hovers over the footer logos
 			const footer_hover_inflation_ratio = 1.3;
@@ -26,8 +169,15 @@
 			let icons;
 			let name_title;
 		
-			function onload() {
-				// Get everything
+			function animationsonload() {
+				// Make inflatables
+				$(".inflatable").each(function(index) {
+					this.inflatable = new Inflatable(this);
+					this.onmouseover = () => { this.inflatable.inflate(footer_hover_inflation_ratio, footer_hover_inflation_speed); };
+					this.onmouseleave = () => { this.inflatable.deflate(footer_hover_inflation_speed); };
+				});
+				
+				// Query everything
 				icons = $("#icons");
 				name_title = $("#name-title");
 			
@@ -52,10 +202,20 @@
 			
 			function afterTitleLeft() {
 				// Slide the title up
-				name_title.animate({top: 0}, 1000);
+				name_title.animate({top: 0}, 1000, afterAnimations);
 			
 				// Slide in the icons at the footer
 				icons.effect("slide", {direction: "down"}, 1000);
+			}
+			
+			function afterAnimations() {
+				playProject();
+			}
+			
+			function slideInProjectInfo() {
+				let projecctInfo = $("#project-info-bar");
+				projecctInfo.hide();
+				projecctInfo.toggle("fade", 4000);
 			}
 			
 			let inflatables = {};
@@ -82,24 +242,42 @@
 			}
 		</script>
     </head>
-    <body onload="onload();">
+    <body onload="animationsonload(); getProjectsData();">
 		<div class="container-fluid">
 			<div class="row">
-				<div class="col-6">
+				<div class="col-auto">
 					<div class="title" id="name-title">
 						Joe O'Connor
 					</div>
 				</div>
 			</div>
 		</div>
+		
+		<!-- Canvas -->
+		<canvas class="top-left background square-height" width="4000" height="4000" id="backgroundCanvas"></canvas>
+		
 		<!-- Footer of the page -->
 		<div class="footer">
+			<!-- Current Project Info -->
+			<div class="bottom-left project-info" id="project-info-bar", style="display: none;">
+				<div class="container-fluid">
+					<div class="row">
+						<div class="col-auto" id="project-name">
+						</div>
+						<div class="col-auto" id="project-date">
+						</div>
+					</div>
+				</div>
+			</div>
 			<!-- Icons -->
 			<div class="bottom-right" id="icons">
 				<a href="https://github.com/Joeoc2001">
-					<img src="GitHub-Mark-64px.png" class="footer-image" onload="this.inflatable = new Inflatable(this);" onmouseover="this.inflatable.inflate(footer_hover_inflation_ratio, footer_hover_inflation_speed);" onmouseleave="this.inflatable.deflate(footer_hover_inflation_speed);"/>
+					<img src="GitHub-Mark-64px.png" class="footer-image inflatable" onload="" onmouseover="" onmouseleave=""/>
 				</a>
 			</div>
+		</div>
+		
+		<div id="project-scripts">
 		</div>
     </body>
 </html>
