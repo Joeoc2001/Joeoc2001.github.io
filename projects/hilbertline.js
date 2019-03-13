@@ -169,7 +169,7 @@ function hilbertLoopFunction(ticks) {
 			}
 			
 			// Set colour
-			hue += 120 / (Math.pow(4, order - 1)); // Path segment number scales by about 4 each time
+			hue += 90 / (Math.pow(4, order - 1)); // Path segment number scales by about 4 each time
 			hue %= 360;
 			hilbertCanvas.strokeStyle = "hsl(" + hue + ", 50%, 66%)";
 		}
