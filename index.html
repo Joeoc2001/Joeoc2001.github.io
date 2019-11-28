@@ -16,143 +16,69 @@
 		<link href="https://fonts.googleapis.com/css?family=Noto+Sans|Roboto" rel="stylesheet">
 		
 		<link rel="stylesheet" href="style.css">
+
 		<script>
-		const monthNames = ["January", "February", "March", "April", "May", "June",
+		const MONTH_NAMES = ["January", "February", "March", "April", "May", "June",
 				"July", "August", "September", "October", "November", "December"
 			];
 		</script>
+
 		<!-- Project loading scripts -->
+		<script src="control.js"></script>
+		<script src="project.js"></script>
+
+		<!-- General project scripts -->
 		<script>
-			class ProjectControl {
-				constructor(type, name, text, default_value, data={}) {
-					this.type = type;
-					this.name = name;
-					this.text = text;
-					this.default_value = default_value;
-					this.data = data;
-				}
-				
-				static fromJson(jsonData) {
-				
-				}
-			}
-			
-			class Project {
-				constructor(name, js_urls, date_month, date_year, controls) {
-					this.name = name;
-					this.js_urls = js_urls;
-					this.date_month = date_month;
-					this.date_year = date_year;
-					this.controls = controls;
-				}
-				
-				static fromJson(jsonData) {
-					return new Project(jsonData["name"], jsonData["js_urls"], jsonData["date_month"], jsonData["date_year"], []);
-				}
-			}
-		
-			let projectsData;
-			let currentProject;
-			
-			let tickFunction = null;
-			let initFunction;
-			
-			let currentProjectLoop = null;
-			
-			let canvasElement;
-			let canvas = null;
-			
-			function initCanvas() {
-				// Get canvas to draw to
-				canvasElement = document.getElementById("backgroundCanvas");
-				canvas = canvasElement.getContext("2d");
-			}
-			
-			function initProject() {
-				// Init canvas if it needs initing
-				if (canvas === null) {
-					initCanvas();
-				}
-				
-				stopProject();
-				
-				// Init the new project
-				initFunction(canvas, canvasElement.width, canvasElement.height);
-			}
-			
-			function tickProject(ticks) {
-				if(tickFunction != null) {
-					tickFunction(ticks);
-				}
-			}
-			
-			function stopProject() {
-				// Stop the last project's loop
-				if (currentProjectLoop != null) {
-					clearInterval(currentProjectLoop)
-					currentProjectLoop = null;
-				}
-			}
-			
-			function playProject() {
-				stopProject();
-				
-				// Animate info bar in
-				slideInProjectInfo();
-				
-				// Add loop
-				window.setInterval(tickProject, 50, 50);
-			}
-			
-			function getProjectsData() {
-				$.ajax({
-					dataType: "json",
-					url: "projects.json",
-					success: getProjectsDataSuccess,
-					error: getProjectsDataError
+			let projects = null;
+
+			function projectsOnBodyLoad() {
+				let projectsPromise = getProjects();
+				projectsPromise.then( (data) => {
+					projects = data;
+					tryStartMainProject();
+				}).catch( (error) => {
+					alert(error)
 				});
 			}
-			
-			function getProjectsDataError( jqXHR, textStatus, errorThrown ) {
-				alert("Could not load projects: " + textStatus + "\n" + errorThrown);
-			}
-			
-			function getProjectsDataSuccess(data) {
-				projectsData = data;
-				
-				if (projectsData == null) {
-					alert("Could not parse json data");
+		</script>
+
+		<!-- Main page project scripts -->
+		<script>
+
+			function tryStartMainProject() {
+				if (projects == null || !introDone) {
+					return;
 				}
-				
-				loadProject(0);
+
+				displayRandomProject(projects);
 			}
-			
-			function loadProject(index) {
-				stopProject();
-			
-				let projectData = projectsData["projects"][0];
-				currentProject = Project.fromJson(projectData);
-				
-				displayProjectInfo();
-				
-				// Load js for project
-				scriptsDiv = $("#project-scripts");
-				scriptsDiv.empty(); // Clear out all old code
-				for (let x = 0; x < currentProject.js_urls.length; x++) {
-					let newScript = document.createElement('script');
-					newScript.src = currentProject.js_urls[x];
-					scriptsDiv.append(newScript);
+
+			function displayRandomProject(projects) {
+				if (projects == null) {
+					alert("Cannot display projects before loading");
+					return;
 				}
-				
-				initProject();
+
+				// Select a random project
+				let index = Math.floor(Math.random() * projects.length);
+				let project = projects[index];
+
+				let mainCanvas = $("#backgroundCanvas")[0];
+
+				project.resolve().catch( (error) => {
+					alert(error);
+				}).then( (project) => {
+					displayProjectInfo(project);
+					project.start(mainCanvas, 16);
+				});
 			}
-			
-			function displayProjectInfo() {
+
+			function displayProjectInfo(project) {
 				let name = "";
 				let date = "";
-				if (currentProject != null) {
-					name = currentProject.name;
-					date = monthNames[currentProject.date_month] + " " + currentProject.date_year;
+				if (project != null) {
+					name = project.name;
+					date = MONTH_NAMES[project.date_month] + " " + project.date_year;
 				}
 				$("#project-name").text(name);
 				$("#project-date").text(date);
@@ -168,13 +94,19 @@
 			// Used to decrease jquery commands
 			let icons;
 			let name_title;
+
+			let introDone = false;
 		
-			function animationsonload() {
+			function animationsOnLoad() {
 				// Make inflatables
 				$(".inflatable").each(function(index) {
 					this.inflatable = new Inflatable(this);
-					this.onmouseover = () => { this.inflatable.inflate(footer_hover_inflation_ratio, footer_hover_inflation_speed); };
-					this.onmouseleave = () => { this.inflatable.deflate(footer_hover_inflation_speed); };
+					this.onmouseover = function() {
+						this.inflatable.inflate(footer_hover_inflation_ratio, footer_hover_inflation_speed);
+					};
+					this.onmouseleave = function() {
+						this.inflatable.deflate(footer_hover_inflation_speed);
+					};
 				});
 				
 				// Query everything
@@ -207,15 +139,16 @@
 				// Slide in the icons at the footer
 				icons.effect("slide", {direction: "down"}, 1000);
 			}
-			
+
 			function afterAnimations() {
-				playProject();
+				introDone = true;
+				tryStartMainProject();
 			}
 			
 			function slideInProjectInfo() {
-				let projecctInfo = $("#project-info-bar");
-				projecctInfo.hide();
-				projecctInfo.toggle("fade", 4000);
+				let projectInfo = $("#project-info-bar");
+				projectInfo.hide();
+				projectInfo.toggle("fade", 4000);
 			}
 			
 			let inflatables = {};
@@ -242,7 +175,7 @@
 			}
 		</script>
     </head>
-    <body onload="animationsonload(); getProjectsData();">
+    <body onload="animationsOnLoad(); projectsOnBodyLoad();">
 		<div class="container-fluid">
 			<div class="row">
 				<div class="col-auto">
@@ -253,13 +186,13 @@
 			</div>
 		</div>
 		
-		<!-- Canvas -->
+		<!-- Main page background canvas -->
 		<canvas class="top-left background square-height" width="4000" height="4000" id="backgroundCanvas"></canvas>
 		
 		<!-- Footer of the page -->
 		<div class="footer">
 			<!-- Current Project Info -->
-			<div class="bottom-left project-info" id="project-info-bar", style="display: none;">
+			<div class="bottom-left project-info" id="project-info-bar" style="display: none;">
 				<div class="container-fluid">
 					<div class="row">
 						<div class="col-auto" id="project-name">
@@ -275,9 +208,6 @@
 					<img src="GitHub-Mark-64px.png" class="footer-image inflatable" onload="" onmouseover="" onmouseleave=""/>
 				</a>
 			</div>
-		</div>
-		
-		<div id="project-scripts">
 		</div>
     </body>
 </html>
