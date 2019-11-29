@@ -22,7 +22,7 @@ function LazyProject(name, jsURL, dateMonth, dateYear, controlsData) {
             // If script request succeeded
             function successFun(data) {
                 // Execute script and collect generated tick function
-                let tickFunction = new Function('"use strict"; return ' + data)();
+                let tickFunction = new Function('"use strict";' + data)();
 
                 // Generate controls
                 let controls = generateControls(controlsData);
@@ -44,25 +44,52 @@ function Project(name, dateMonth, dateYear, controls, tickFunction) {
     this.controls = controls;
     this.tickFunction = tickFunction;
 
-    this.start = function (canvas, interval) {
+    this.start = function (canvas) {
         let instance = new ProjectInstance(this, canvas);
-        instance.start(interval);
+        instance.start();
         return instance;
     }
 }
 
 function ProjectInstance(project, canvas) {
+    let animationOrigin = null;
+    let animationHandler = null;
+    let stopHandler = () => {};
+
     // Runs once per tick and passes all data through to project
-    function tickProject(tStart) {
-        let date = new Date();
-        let tTime = date.getTime();
-        project.tickFunction(canvas, project.controls, tTime - tStart);
+    function tickProject(dt) {
+        if (animationOrigin == null) {
+            animationOrigin = dt;
+        }
+
+        let done = project.tickFunction(canvas, project.controls, dt - animationOrigin);
+
+        if (!done) {
+            // Queue next loop
+            animationHandler = requestAnimationFrame(tickProject);
+        } else {
+            // Clear this and trigger the next action
+            animationHandler = null;
+            stopHandler();
+        }
     }
 
-    this.start = function (interval) {
-        let date = new Date();
-        let tStart = date.getTime();
-        setInterval(tickProject, interval, tStart);
+    this.start = function () {
+        this.stop();
+
+        // Force trigger first loop
+        animationHandler = requestAnimationFrame(tickProject);
+    };
+
+    this.stop = function () {
+        if (animationHandler != null) {
+            cancelAnimationFrame(animationHandler);
+            animationHandler = null;
+        }
+    };
+
+    this.setStopHandler = function (handler) {
+        stopHandler = handler;
     }
 }
 

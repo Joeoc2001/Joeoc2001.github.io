@@ -69,20 +69,33 @@
 					alert(error);
 				}).then( (project) => {
 					displayProjectInfo(project);
-					project.start(mainCanvas, 16);
+					project.start(mainCanvas);
 				});
 			}
 
 			function displayProjectInfo(project) {
 				let name = "";
 				let date = "";
+
+                let projectInfo = $("#project-info-bar");
+                projectInfo.hide();
+
 				if (project != null) {
 					name = project.name;
 					date = MONTH_NAMES[project.date_month] + " " + project.date_year;
+
+                    projectInfo.toggle("fade", 4000);
 				}
+
 				$("#project-name").text(name);
 				$("#project-date").text(date);
 			}
+
+			function resizeCanvas() {
+			    let c = $("#backgroundCanvas")[0];
+			    c.width = window.outerWidth;
+                c.height = window.outerHeight;
+            }
 		</script>
 		
 		<!-- Display animation scripts -->
@@ -119,12 +132,12 @@
 				
 				// Set the title to occupy the centre of the screen
 				name_title.css({"position": "relative",
-					"top": ((window.innerHeight - name_title.height()) / 2) + "px",
-					"left": ((window.innerWidth - name_title.width()) / 2) + "px"});
+					"top": ((window.outerHeight - name_title.height()) / 2) + "px",
+					"left": ((window.outerWidth - name_title.width()) / 2) + "px"});
 			
 			    // Fade in the title
 				name_title.toggle("fade", 1000, afterTitleFaded);
-				
+
 			}
 			
 			function afterTitleFaded() {
@@ -143,12 +156,6 @@
 			function afterAnimations() {
 				introDone = true;
 				tryStartMainProject();
-			}
-			
-			function slideInProjectInfo() {
-				let projectInfo = $("#project-info-bar");
-				projectInfo.hide();
-				projectInfo.toggle("fade", 4000);
 			}
 			
 			let inflatables = {};
@@ -175,19 +182,19 @@
 			}
 		</script>
     </head>
-    <body onload="animationsOnLoad(); projectsOnBodyLoad();">
+    <body onload="animationsOnLoad(); projectsOnBodyLoad(); resizeCanvas();" onresize="resizeCanvas();">
 		<div class="container-fluid">
 			<div class="row">
 				<div class="col-auto">
 					<div class="title" id="name-title">
-						Joe O'Connor
+                        <div>Joe O'Connor</div>
 					</div>
 				</div>
 			</div>
 		</div>
 		
 		<!-- Main page background canvas -->
-		<canvas class="top-left background square-height" width="4000" height="4000" id="backgroundCanvas"></canvas>
+		<canvas class="top-left background" width="4000" height="4000" id="backgroundCanvas"></canvas>
 		
 		<!-- Footer of the page -->
 		<div class="footer">
