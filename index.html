@@ -119,13 +119,7 @@
 			function animationsOnLoad() {
 				// Make inflatables
 				$(".inflatable").each(function(index) {
-					this.inflatable = new Inflatable(this);
-					this.onmouseover = function() {
-						this.inflatable.inflate(footer_hover_inflation_ratio, footer_hover_inflation_speed);
-					};
-					this.onmouseleave = function() {
-						this.inflatable.deflate(footer_hover_inflation_speed);
-					};
+					new Inflatable(this);
 				});
 				
 				// Query everything
@@ -163,27 +157,28 @@
 				introDone = true;
 				tryStartMainProject();
 			}
-			
-			let inflatables = {};
 				
-			class Inflatable {
-				constructor(o) {
-				    // Assign values
-					this.initial_width = o.width;
-					this.src_obj = $(o);
-					
-					// Register this as an inflatable
-					inflatables[o] = this;
+			function Inflatable(o) {
+                // Assign values
+                let initial_width = o.width;
+                let src_obj = $(o);
+
+                // Register events
+                src_obj.mouseenter(function() {
+                    inflate(footer_hover_inflation_ratio, footer_hover_inflation_speed);
+                });
+                src_obj.mouseleave(function() {
+                    deflate(footer_hover_inflation_speed);
+                });
+				
+				function inflate(scale, speed) {
+					src_obj.stop();
+					src_obj.animate({width: initial_width * scale}, speed);
 				}
 				
-				inflate(scale, speed) {
-					this.src_obj.stop();
-					this.src_obj.animate({width: this.initial_width * scale}, speed);
-				}
-				
-				deflate(speed) {
-					this.src_obj.stop();
-					this.src_obj.animate({width: this.initial_width}, speed);
+				function deflate(speed) {
+					src_obj.stop();
+					src_obj.animate({width: initial_width}, speed);
 				}
 			}
 		</script>
@@ -200,7 +195,7 @@
 		</div>
 		
 		<!-- Main page background canvas -->
-		<canvas class="top-left background" width="4000" height="4000" id="backgroundCanvas"></canvas>
+		<canvas class="top-left background" width="1000" height="1000" id="backgroundCanvas"></canvas>
 		
 		<!-- Footer of the page -->
 		<div class="footer">
@@ -217,8 +212,11 @@
 			</div>
 			<!-- Icons -->
 			<div class="bottom-right" id="icons">
+                <a href="https://linkedin.com/in/j-oc/">
+                    <img src="LI-In-Bug-64px.png" class="footer-image inflatable" onload="" onmouseover="" onmouseleave="" alt="LinkedIn"/>
+                </a>
 				<a href="https://github.com/Joeoc2001">
-					<img src="GitHub-Mark-64px.png" class="footer-image inflatable" onload="" onmouseover="" onmouseleave=""/>
+					<img src="GitHub-Mark-64px.png" class="footer-image inflatable" onload="" onmouseover="" onmouseleave="" alt="Github"/>
 				</a>
 			</div>
 		</div>

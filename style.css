@@ -44,9 +44,13 @@
   vertical-align: bottom;
   width:40px;
   height:auto;
+  border:0;
 }
 
 /* Formatting Styles */
+a, a:visited a:hover {
+    text-decoration: none !important; /* Remove all blue underlines */
+}
 
 .title {
 	font-size: 5vw;
