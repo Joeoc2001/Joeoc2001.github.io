@@ -45,47 +45,85 @@ function Project(name, dateMonth, dateYear, controls, tickFunction) {
     this.tickFunction = tickFunction;
 
     this.start = function (canvas) {
-        let instance = new ProjectInstance(this, canvas);
-        instance.start();
-        return instance;
-    }
+        return new ProjectInstance(this, canvas);
+    };
+}
+
+function State(canvas, controls, origin) {
+    let now;
+    let dirty = false;
+    let restart = true;
+    let context = canvas.getContext("2d");
+
+    this.getContext = function () {
+        return context;
+    };
+
+    this.getSize = function () {
+        return [canvas.width, canvas.height];
+    };
+
+    this.getDirty = function () {
+        return dirty;
+    };
+
+    this.setDirty = function () {
+        dirty = true;
+    };
+
+    this.getRestart = function () {
+        return restart;
+    };
+
+    this.setRestart = function () {
+        restart = true;
+    };
+
+    this.setNow = function (t) {
+        now = t;
+    };
+
+    this.getTime = function () {
+        return now - origin;
+    };
+
+    this.next = function () {
+        dirty = false;
+        restart = false;
+    };
 }
 
 function ProjectInstance(project, canvas) {
-    let animationOrigin = null;
-    let animationHandler = null;
     let stopHandler = () => {};
 
-    // Runs once per tick and passes all data through to project
-    function tickProject(dt) {
-        if (animationOrigin == null) {
-            animationOrigin = dt;
-        }
+    let state = new State(canvas, project.controls, performance.now(), performance.now());
 
-        let done = project.tickFunction(canvas, project.controls, dt - animationOrigin);
+    // Force trigger first loop
+    let animationHandler = requestAnimationFrame(tickProject);
+
+    this.getState = function () {
+        return state;
+    };
+
+    // Runs once per tick and passes all data through to project
+    function tickProject(t) {
+        state.setNow(t);
+
+        let done = project.tickFunction(state);
+
+        state.next();
 
         if (!done) {
             // Queue next loop
             animationHandler = requestAnimationFrame(tickProject);
         } else {
-            // Clear this and trigger the next action
-            animationHandler = null;
             stopHandler();
         }
     }
 
-    this.start = function () {
-        this.stop();
-
-        // Force trigger first loop
-        animationHandler = requestAnimationFrame(tickProject);
-    };
-
     this.stop = function () {
-        if (animationHandler != null) {
-            cancelAnimationFrame(animationHandler);
-            animationHandler = null;
-        }
+        cancelAnimationFrame(animationHandler);
+        stopHandler();
     };
 
     this.setStopHandler = function (handler) {
