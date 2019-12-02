@@ -55,6 +55,10 @@ function State(canvas, controls, origin) {
     let restart = true;
     let context = canvas.getContext("2d");
 
+    this.getControls = function () {
+        return controls;
+    };
+
     this.getContext = function () {
         return context;
     };
