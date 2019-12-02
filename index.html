@@ -40,6 +40,14 @@
 					alert(error)
 				});
 			}
+
+			function width() {
+			    return document.documentElement.clientWidth;
+            }
+
+            function height() {
+                return document.documentElement.clientHeight;
+            }
 		</script>
 
 		<!-- Main page project scripts -->
@@ -94,8 +102,8 @@
 
 			function resizeCanvas() {
 			    let c = $("#backgroundCanvas")[0];
-			    c.width = window.outerWidth;
-                c.height = window.outerHeight;
+			    c.width = width();
+                c.height = height();
 
                 // If the window was resized and there is a project running then it needs to be fully redrawn
                 if (mainProjectInstance != null) {
@@ -132,8 +140,8 @@
 				
 				// Set the title to occupy the centre of the screen
 				name_title.css({"position": "relative",
-					"top": ((window.outerHeight - name_title.height()) / 2) + "px",
-					"left": ((window.outerWidth - name_title.width()) / 2) + "px"});
+					"top": ((height() - name_title.height()) / 2) + "px",
+					"left": ((width() - name_title.width()) / 2) + "px"});
 			
 			    // Fade in the title
 				name_title.toggle("fade", 1000, afterTitleFaded);
