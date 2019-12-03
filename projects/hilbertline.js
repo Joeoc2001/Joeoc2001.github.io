@@ -1,242 +1,188 @@
-class HilbertCurvePart {
-	constructor (left, right, forewards, a, b, commands) {
-		this.left = left;
-		this.right = right;
-		this.forewards = forewards;
-		this.a = a;
-		this.b = b;
-		this.commands = commands;
-	}
-	
-	static fromBase (base, partA, partB) {
-		let commands = [];
-		for (let i = 0; i < base.commands.length; i++) {
-			let newInstructions;
-		
-			let isA = base.commands[i] === base.a;
-			let isB = base.commands[i] === base.b;
-			if (isA || isB) {
-				// Create new instructions to replace old char with
-				if (isA) {
-					newInstructions = partA.commands;
-				} else {
-					newInstructions = partB.commands;
-				}
-			} else {
-				newInstructions = [base.commands[i]];
-			}
-			
-			// Check start and end for alternating turns
-			if (false && commands.length > 0 &&
-			  ((newInstructions[0] === base.left && commands[base.commands.length - 1] === base.right) ||
-			   (newInstructions[0] === base.right && commands[base.commands.length - 1] === base.left))) {
-				// Crop off ends
-				newInstructions = newInstructions.slice(1, newInstructions.length);
-				commands.splice(commands.length - 1, 1);
-			}
-			
-			// Splice in
-			commands = commands.concat(newInstructions);
-		}
-		
-		return new HilbertCurvePart(base.left, base.right, base.forewards, base.a, base.b, commands);
+const MS_PER_LINE_PART = 1000;
+const START_HUE = 0;
+const SATURATION = "50%";
+const LIGHTNESS = "66%";
+
+function Vector2 (x, y) {
+	this.x = x;
+	this.y = y;
+
+	this.subtract = function (vec) {
+		return new Vector2(x - vec.x, y - vec.y);
+	};
+
+	this.add = function(vec) {
+		return new Vector2(x + vec.x, y + vec.y);
+	};
+
+	this.scale = function(s) {
+		return new Vector2(x * s, y * s);
+	};
+}
+
+function LazyList(head, tail) {
+	this.head = head;
+	this.tail = tail;
+}
+
+// Lazy prepend array to a lazy lazy list (A function that generates a lazy list)
+function lazyPrepend(array, lllist, index) {
+	if (array.length <= index) {
+		return lllist();
+	} else {
+		return new LazyList(array[index], () => {return lazyPrepend(array, lllist, index + 1)});
 	}
 }
 
-function genCurveInstruction(depth, t1, t2, f) {
-	// From Wikipedia:
-	// Alphabet : A, B
-	// Constants : F R L
-	// Axiom : A
-	// Production rules:
-	// A → L B F R A F A R F B L
-	// B → R A F L B F B L F A R
-	let startA = [t1, 'B', f, t2, 'A', f, 'A', t2, f, 'B', t1];
-	let startB = [t2, 'A', f, t1, 'B', f, 'B', t1, f, 'A', t2];
-	let instruction_power_levels = [[new HilbertCurvePart(t1, t2, f, 'A', 'B', startA), new HilbertCurvePart(t1, t2, f, 'A', 'B', startB)]];
-	
-	// Generate power levels
-	let msb = Math.floor(Math.log2(depth));
-	for (let loop = 0; loop < msb; loop++) {
-		instruction_next_level = [];
-		instruction_prev_level = instruction_power_levels[instruction_power_levels.length - 1];
-		instruction_power_levels.push(instruction_next_level);
-		
-		for (let side = 0; side < 2; side++) {
-			// Make a new side from the previous sides
-			let next_side = HilbertCurvePart.fromBase(instruction_prev_level[side], instruction_prev_level[0], instruction_prev_level[1]);
-			
-			
-			// Copy new side in
-			instruction_next_level.push(next_side);
-		}
+// Replaces all values with the value given by the mapping function, which returns an array
+function lazyReplaceAll(mapping, llist) {
+	if (llist == null) {
+		return null;
 	}
+
+	let vals = mapping (llist.head);
 	
-	let instructions = new HilbertCurvePart(t1, t2, f, 'A', 'B', ['A']);
+	let ending = () => lazyReplaceAll(mapping, llist.tail());
 	
-	let i = 0;
-	while (depth >= 1) {
-		if (depth % 2 == 1) {
-			instructions = HilbertCurvePart.fromBase(instructions, instruction_power_levels[i][0], instruction_power_levels[i][1]);
-		}
-		
-		depth /= 2;
-		depth = Math.floor(depth);
-		i++;
-	}
-	
-	return instructions.commands;
+	return lazyPrepend(vals, ending, 0);
 }
 
-let turn1char = 'R';
-let turn2char = 'L';
-let forewardchar = 'F';
-
-let order;
-let curve;
-let hilbertCanvas;
-let currentInstruction = -1;
-let ticksPerForeward = 1000;
-let currentForewardTicks = 0;
-let direction = 0; // 0, 1, 2, 3 => N, E, S, W
-let prevPos;
-let lastDrawnPos;
-let nextPos;
-let forewardXDistance;
-let forewardYDistance;
-let hue = 0;
-
-function hilbertLoopFunction(ticks) {
-	// If finished return
-	if (currentInstruction >= curve.length) {
-		return;
+function hilbertMapping(x) {
+	switch (x) {
+		case 'A':
+			return ['L','B','F','R','A','F','A','R','F','B','L'];
+		case 'B':
+			return ['R','A','F','L','B','F','B','L','F','A','R'];
+		default:
+			return [x];
 	}
-	
-	currentForewardTicks -= (ticks * 100);
-	
-	do {
-		hilbertCanvas.strokeStyle = "hsl(" + hue + ", 50%, 66%)";
-		
-		// Draw line to position
-		let currentMoveVector = nextPos.subtract(prevPos);
-		let lineCompletePercent = 1 - (currentForewardTicks / ticksPerForeward);
-		currentMoveVector = currentMoveVector.scale(Math.min(1, lineCompletePercent));
-		let endPoint = prevPos.add(currentMoveVector);
-		
-		hilbertCanvas.beginPath();
-		hilbertCanvas.moveTo(prevPos.x, prevPos.y);
-		hilbertCanvas.lineTo(endPoint.x, endPoint.y);
-		hilbertCanvas.stroke();
-		
-		lastDrawnPos = endPoint;
-		
-		// If line is done get next instruction
-		if (currentForewardTicks <= 0) {
-			currentInstruction++;
-			
-			// Ensure current instruction is a move instruction
-			while (currentInstruction < curve.length && curve[currentInstruction] != forewardchar) {
-				// Consume turns
-				if (curve[currentInstruction] == turn1char) {
-					direction += 3;
-					direction %= 4;
-					
-				} else if (curve[currentInstruction] == turn2char) {
-					direction += 1;
-					direction %= 4;
-				}
-				
-				currentInstruction++;
-			}
-			
-			// Set move instruction
-			if (currentInstruction < curve.length) {
-				currentForewardTicks += ticksPerForeward;
-					
-				prevPos = nextPos;
-				switch(direction) {
-					case 0:
-						nextPos = new Point(prevPos.x, prevPos.y - forewardYDistance);
-						break;
-					case 1:
-						nextPos = new Point(prevPos.x - forewardXDistance, prevPos.y);
-						break;
-					case 2:
-						nextPos = new Point(prevPos.x, prevPos.y + forewardYDistance);
-						break;
-					case 3:
-						nextPos = new Point(prevPos.x + forewardXDistance, prevPos.y);
-						break;
-				}
-			}
-			// Set colour
-			hue += 90 / (Math.pow(4, order - 1)); // Path segment number scales by about 4 each time
-			hue %= 360;
-			
-			// Draw curve
-			hilbertCanvas.lineWidth /= 2;
-			hilbertCanvas.beginPath();
-			hilbertCanvas.arc(prevPos.x, prevPos.y, hilbertCanvas.lineWidth / 2, 0, 2*Math.PI);
-			hilbertCanvas.stroke();
-			hilbertCanvas.lineWidth *= 2;
-		}
-	} while (currentForewardTicks <= 0 && currentInstruction < curve.length);
 }
 
-function directionToAngle(d) {
+function genLazyInstructions(depth) {
+	if (depth <= 1) {
+		return new LazyList('A', () => {return null});
+	}
+
+	let c1 = genLazyInstructions(depth - 1);
+	
+	return lazyReplaceAll(hilbertMapping, c1);
+}
+
+function getLengthFromDepth(depth) {
+	return (1 << (2 * (depth - 1))) - 1;
+}
+
+function directionToVector(d, x, y) {
 	switch(d) {
 		case 0:
-			return 1.5*Math.PI;
+			return new Vector2(x, 0);
 		case 1:
-			return 0;
+			return new Vector2(0, y);
 		case 2:
-			return 0.5*Math.PI;
+			return new Vector2(-x, 0);
 		case 3:
-			return Math.PI;
+			return new Vector2(0, -y);
 	}
 }
 
-function hilbertInitFunction(canvas, width, height) {
-	hilbertCanvas = canvas;
-	
-	order = 6;
-	
-	curve = genCurveInstruction(order, turn1char, turn2char, forewardchar);
-	let size = (1 << order) - 1; // The number of steps taken in each axis to fill the space
-	
-	forewardXDistance = width / size;
-	forewardYDistance = height / size;
-	
-	hilbertCanvas.lineWidth = (forewardXDistance + forewardYDistance) / (2 * 2);
-	
-	prevPos = new Point(hilbertCanvas.lineWidth / 2, height);
-	lastDrawnPos = prevPos;
-	nextPos = new Point(hilbertCanvas.lineWidth / 2, height - (hilbertCanvas.lineWidth / 2));
-	
-	// Readjust steps to fit line
-	forewardXDistance = (width - hilbertCanvas.lineWidth) / size;
-	forewardYDistance = (height - hilbertCanvas.lineWidth) / size;
+function drawBubble(ctx, point, lineWidth) {
+	ctx.lineWidth = lineWidth / 2;
+	ctx.beginPath();
+	ctx.arc(point.x, point.y, lineWidth / 4, 0, 2*Math.PI);
+	ctx.stroke();
 }
 
-class Point {
-	constructor (x, y) {
-		this.x = x;
-		this.y = y;
-	}
-	
-	subtract(point) {
-		return new Point(this.x - point.x, this.y - point.y);
-	}
-	
-	add(point) {
-		return new Point(this.x + point.x, this.y + point.y);
-	}
-	
-	scale(s) {
-		return new Point(this.x * s, this.y * s);
-	}
+function setHue(ctx, hue) {
+	ctx.strokeStyle = "hsl(" + hue + ", " + SATURATION + ", " + LIGHTNESS + ")";
 }
 
-// Run functions to hook onto current page
-tickFunction = hilbertLoopFunction;
-initFunction = hilbertInitFunction;
+// noinspection JSAnnotator
+return (state) => {
+	const depth = state.getControls()["depth_slider"].getValue();
+	const size = (1 << (depth - 1)) - 1; // The number of steps taken in each axis to fill the space
+	const length = getLengthFromDepth(depth); // The number of steps taken total
+	const msps = MS_PER_LINE_PART / Math.pow(state.getControls()["speed_slider"].getValue(), 2);
+	const ctx = state.getContext();
+	const time = state.getTime();
+	const lineWidth = (Math.min(state.getSize()[0], state.getSize()[1]) / size) *
+		(state.getControls()["thick_slider"].getValue() / 10);
+
+	// Restart code
+	if (state.getRestart()) {
+		state.fullCurve = genLazyInstructions(depth);
+	}
+
+	// Redraw code
+	if (state.getDirty()) {
+		setHue(ctx, START_HUE);
+
+		state.currentCurve = state.fullCurve;
+		state.progress = 0;
+		state.direction = 0;
+
+		state.forewardXDistance = (state.getSize()[0] - lineWidth) / size;
+		state.forewardYDistance = (state.getSize()[1] - lineWidth) / size;
+
+		state.lastPos = new Vector2(lineWidth / 2, state.getSize()[1] - lineWidth / 2);
+		drawBubble(ctx, state.lastPos, lineWidth);
+	}
+
+	// Draw until caught up with time
+	while (state.progress < time){
+		// If we have run out of instructions then we are done
+		if (state.currentCurve == null) {
+			return true;
+		}
+
+		let linePartIndex = Math.floor(state.progress / msps);
+
+		// Set line style
+		let hue = START_HUE + 360 * (linePartIndex / length);
+		hue %= 360;
+		setHue(ctx, hue);
+
+		// Eat instruction
+		switch (state.currentCurve.head) {
+			case 'A':
+			case 'B':
+				break;
+			case 'L':
+				state.direction += 3;
+				state.direction %= 4;
+				break;
+			case 'R':
+				state.direction += 1;
+				state.direction %= 4;
+				break;
+			case 'F':
+				let progress = Math.min(1, (time - state.progress) / msps);
+				let move = directionToVector(state.direction, state.forewardXDistance, state.forewardYDistance).scale(progress);
+				let endPoint = state.lastPos.add(move);
+
+				// Draw line to position
+				ctx.lineWidth = lineWidth;
+				ctx.beginPath();
+				ctx.moveTo(state.lastPos.x, state.lastPos.y);
+				ctx.lineTo(endPoint.x, endPoint.y);
+				ctx.stroke();
+
+				// Check if done
+				if (progress < 1) {
+					return false;
+				}
+
+				// Draw bubble
+				drawBubble(ctx, endPoint, lineWidth);
+
+				// Add progress
+				state.lastPos = endPoint;
+				state.progress += msps;
+				break;
+		}
+
+		// Progress by 1 step
+		state.currentCurve = state.currentCurve.tail();
+	}
+
+	return false;
+};

@@ -7,8 +7,9 @@
 			"date_year": 2019,
 			"type": 1,
 			"controls": [
-				{"type": "slider", "name": "depth_slider", "text": "Depth", "min": 1, "max": 20, "default": 8},
-				{"type": "slider", "name": "speed_slider", "text": "Speed", "min": 1, "max": 10, "default": 3},
+				{"type": "slider", "name": "depth_slider", "text": "Depth", "min": 1, "max": 20, "default": 7},
+				{"type": "slider", "name": "speed_slider", "text": "Speed", "min": 1, "max": 10, "default": 6},
+                {"type": "slider", "name": "thick_slider", "text": "Thickness", "min": 1, "max": 10, "default": 5},
 				{"type": "button", "name": "reset_button", "text": "Reset"}
 			]
 		}
