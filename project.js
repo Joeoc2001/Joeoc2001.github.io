@@ -8,7 +8,7 @@ function LazyProject(name, jsURL, dateMonth, dateYear, controlsData) {
 
             // Make request
             $.ajax({
-                dataType: "script",
+                //dataType: "script",
                 url: jsURL,
                 success: successFun,
                 error: errorFun
@@ -51,7 +51,7 @@ function Project(name, dateMonth, dateYear, controls, tickFunction) {
 
 function State(canvas, controls, origin) {
     let now;
-    let dirty = false;
+    let dirty = true;
     let restart = true;
     let context = canvas.getContext("2d");
 
@@ -80,6 +80,7 @@ function State(canvas, controls, origin) {
     };
 
     this.setRestart = function () {
+        dirty = true;
         restart = true;
     };
 
